@@ -1,28 +1,380 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div id="categoryContainer" v-if="allCategoryObj">
+    <!-- 头部 -->
+    <header>
+      <span>
+        <i class="iconfont icon-back"></i>
+      </span>
+      <div class="search">
+        <span>
+          <i class="iconfont icon-sousuo"></i>
+        </span>
+        <input type="text" placeholder="搜索商品/种类/店铺">
+      </div>
+      <span class="sandian">
+        <i class="iconfont icon-sandian"></i>
+      </span>
+    </header>
+    <!-- 内容区,动态显示 -->
+    <div class="navContainer">
+      <!-- 左侧导航列表 -->
+      <div class="wrapper wrapperLeft" ref="left">
+        <ul class="allCategoryObj" ref="leftUl">
+          <li :class="{on: index === currentIndex}" v-for='(item,index) in allCategoryObj' :key='index' @click="handleClick(index)">
+            <a href="#">{{item.content.title}}</a>
+          </li>
+        </ul>
+      </div>
+      <!-- 右侧内容大容器 -->
+      <div class="wrapper" ref="right">
+        <div class="rightNav" v-if="currentObj.content">
+          <!-- 右侧大图 -->
+          <div class="navImg" v-if="currentObj.content.banner.length >=1">
+            <img :src="currentObj.content.banner[0].img" v-if="currentObj.content.banner.length === 1">
+            <div class="swiper-container" v-if="currentObj.content.banner.length > 1">
+              <div class="swiper-wrapper">
+                <div class="swiper-slide" v-for='(item,index) in currentObj.content.banner' :key='index'>
+                  <img :src="item.img" >
+                </div>
+              </div>
+              <div class="swiper-pagination"></div>
+            </div>
+            
+          </div>
+          <!-- 右侧小导航 -->
+          <div class="miniBanner" v-if="currentObj.content">
+            <div 
+              class="mini_bannner" 
+              v-for='(item,index) in currentObj.content.mini_banner.content' :key='index'
+              :class="{allWidth:currentObj.content.mini_banner.content.length == 1}"
+            >
+              <h3>{{item.promo_title}}</h3>
+              <p>{{item.promo_text}}</p>
+              <span>
+                <i class="iconfont icon-jiantou1"></i>
+              </span>
+            </div>
+          </div>
+          <!-- 右侧内容展示 -->
+          <div v-if="currentObj.content">
+            <div v-for='(pItem,index) in currentObj.content.pile' :key='index'>
+              <div class="hasImgContainer" v-for='(item,index) in pItem.group' :key='index'>
+                <!-- 分类style-type为2 -->
+                <div class="bookListContainer" v-if="item.style_type == 2">
+                  <p class="bookTitle">{{item.group_name || item.pile_name}}</p>
+                  <ul class="booksList">
+                    <li v-for='(dItem,index) in item.detail' :key='index'>
+                      <img :src="dItem.icon">
+                      <p>{{dItem.title}}</p>
+                    </li>
+                  </ul>
+                </div>
+                <!-- 分类style-type为1 -->
+                <div class="fictionContainer" v-if="item.style_type == 1">
+                  <div class="fictionHeader">
+                    <span class="fictionHeaderLeft bookTitle">{{item.group_name}} ></span>
+                    <span class="fictionHeaderRight">{{item.more}} ></span>
+                  </div>
+                
+                  <div class="fictionUpContent" >
+                    <ul class="upList">
+                      <li v-for="(i,index) in item.detail" :key="index">{{i.title}}</li>
+                      <li  class="fold" @click="toggleUnfold">
+                        收起
+                        <span><i class="iconfont icon-zhankai"></i></span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <!-- 分类style-type为3 -->
+                <div class="booksContainer" v-if="item.style_type == 3">
+                  <div class="fictionHeader">
+                    <span class="fictionHeaderLeft bookTitle">{{item.group_name}} ></span>
+                    <span class="fictionHeaderRight">{{item.more}} ></span>
+                  </div>
+                  <div class="boonsContent">
+                    <p v-for='(Ditem,index) in item.detail' :key='index'>{{Ditem.title}}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div> 
+        </div>
+      </div> 
+    </div>
   </div>
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
+<script type="text/ecmascript-6">
+  import Swiper from 'swiper'
+  import 'swiper/css/swiper.css'
+  import BScroll from 'better-scroll'
+  import {reqCategory} from "../api/index"
+  export default {
+    data () {
+      return {
+        allCategoryObj:[],
+        isShow:false,
+        currentIndex:0,
+        currentObj:{},
+        styleType:''
+      }
+    },
 
-export default {
-  name: 'app',
-  components: {
-    HelloWorld
+    async mounted () {
+      //发异步请求
+      this.allCategoryObj = await reqCategory('/category')
+      //修改初始化数据为图书页面
+      this.currentObj = this.allCategoryObj[this.currentIndex]
+      //右侧滑动
+      this.$nextTick(() => {
+        this.leftScroll = new BScroll(this.$refs.left,{
+          scrollY:"true",
+          click:true
+        })
+        new BScroll(this.$refs.right,{
+          scrollY:"true",
+          click:true
+        })
+      })
+    },
+    methods: {
+      toggleUnfold(){
+        this.isShow = !this.isShow
+      },
+      handleClick(index){
+        //根据下标获取当前对象
+        this.currentObj = this.allCategoryObj[index]
+        //点击移动
+        //获取top值
+        let top = index * 47
+        this.leftScroll.scrollTo(0,-top, 500)
+
+        return this.currentIndex = index
+      }
+    },
+
+    watch: {
+      currentObj () {
+        this.$nextTick(() => {
+          new Swiper ('.swiper-container', {
+            loop: true,
+            autoplay:true,
+            pagination: {
+              el: '.swiper-pagination'
+            }
+          })
+        })
+      }
+    }
+
   }
-}
 </script>
 
-<style>
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+<style scoped lang="stylus" rel="stylesheet/stylus">
+#categoryContainer
+  header
+    width 100%
+    height 45px
+    display flex
+    line-height 45px
+    span 
+      .iconfont
+        width 36px
+        height 30px
+        font-size 20px
+        padding 0 10px
+    .search 
+      width 75%
+      height 30px
+      line-height 30px
+      margin-top 7px 
+      border-radius 30px
+      overflow hidden
+      background-color #e8ecf0 
+      position relative
+      span 
+        position absolute
+        left 0
+        top 0
+        .iconfont
+          font-size 12px
+      input 
+        width 245px
+        margin-left 30px
+        background-color #e8ecf0
+        outline none 
+        font-size 13px
+        color #eee  
+  .navContainer
+    background-color #eff4fa
+    border-top 1px solid #eee
+    .bookTitle
+      padding 7px 0 0 14px
+      font-size 13px
+      font-weight bold
+    .wrapperLeft
+      width 80px 
+      float left 
+      .allCategoryObj
+        width 80px
+        height 1457px
+        background-color #eff4fa
+        li
+          width 100%
+          height 47px
+          background-color #fff 
+          &.on
+            background-color #eff4fa
+            a
+              color red
+          a
+            display block
+            width 100%
+            height 100%
+            font-size 14px
+            text-align center
+            line-height 47px
+    .wrapper
+      height 667px
+      overflow hidden
+      .rightNav
+        float left
+        width 286px
+        max-height 8500px
+        padding-left 9px
+        background-color #eff4fa
+        .navImg
+          width 286px
+          height 102px
+          img   
+            width 100%
+            height 100%
+        .miniBanner
+          height 69px
+          display flex
+          justify-content space-between
+          .mini_bannner
+            width 92px
+            height 40px
+            line-height 15px
+            margin-top 10px
+            padding 13px 35px 13px 13px
+            background-color #fff
+            margin-right 1px
+            position relative
+            overflow hidden
+            &.allWidth
+              width 100%
+            h3
+              font-size 15px
+              font-weight bold
+              margin-bottom 6px
+            p
+              color #8e8e8e
+            .iconfont
+              position absolute
+              top 0
+              right 0
+              width 34px
+              height 60px
+              line-height 60px
+              text-align center
+              font-size 20px
+          .mini_right
+            margin-left 5px
+        .bookListContainer
+          width 286px
+          min-height 180px
+          background-color white
+          margin-top 10px
+          overflow hidden
+          .booksList
+            li
+              float left
+              width 80px
+              height 114px
+              padding 25px 6px 2px 6px
+              img 
+                width 68px
+                height 68px
+              p
+                font-size 12px
+                text-align center
+                line-height 25px
+                color #8e8e8e
+        .fictionContainer
+          width 286px
+          margin-top 10px
+          background-color #fff
+          .fictionHeader
+            box-sizing border-box
+            width 100%
+            height 35px
+            .fictionHeaderLeft 
+              float left
+            .fictionHeaderRight
+              float right
+              margin-right 14px
+              margin-top 7px
+              color #8e8e8e
+          .fictionUpContent
+            width 286px
+            min-height 98px
+            .upList
+              height 98px
+              overflow hidden
+              position relative
+              display flex
+              flex-wrap wrap
+              // justify-content flex-end
+              padding 0 14px
+              li
+                width 33.3333%
+                height 48px
+                text-align center
+                line-height 48px
+                overflow hidden
+                border-bottom 1px solid #eee
+                position relative
+                &::after
+                  content ""
+                  width 1px
+                  height 14px
+                  background-color #e1e1e1
+                  position absolute
+                  top 50%
+                  right 0
+                  margin-top -7px
+              li:nth-of-type(3n)::after 
+                width 0
+              li:last-child::after
+                width 0
+              .unfold,.fold
+                color #bababa
+                .iconfont
+                  font-size 12px
+        .booksContainer
+          width 286px
+          margin-top 10px
+          background-color #fff
+          .fictionHeader
+            box-sizing border-box
+            width 100%
+            height 35px
+            .fictionHeaderLeft 
+              float left
+            .fictionHeaderRight
+              float right
+              margin-right 14px
+              margin-top 7px
+              color #8e8e8e
+          .boonsContent
+            p
+              width 259px
+              height 48px
+              line-height 48px
+              padding-left 10px
+              color #4d525d
+              border-bottom 1px solid #eee
 </style>
